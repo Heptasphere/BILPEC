@@ -1,0 +1,18 @@
+[project]
+name = "bilpec"
+version = "0.1.0"
+description = "Github for the code in the article 'Constrained Ensemble Pruning via Binary Integer Linear Programming'."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "autogluon>=1.6.3",
+    "ipykernel>=7.4.0",
+    "numpy>=2.5.5",
+    "pandas>=2.3.3",
+    "pulp>=4.3.1",
+    "scikit-learn>=1.9.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
