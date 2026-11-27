@@ -1,6 +1,6 @@
 # BILPEC
 
-Git for the code in the article "Constrained Ensemble Pruning via Binary Integer Linear Programming".
+Git for the code in the article "Constrained Ensemble Pruning via Binary Integer Linear Programming" by Vassili MAILLET, Gustavo ANGULO and Pierre JOUVELOT.
 
 This contains the BILPEC/BILPEC\* implementation and baselines implementations.
 
