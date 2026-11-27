@@ -487,7 +487,7 @@ dependencies = [
     { name = "ipykernel" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "pulp" },
+    { name = "pulp", extra = ["cbc"] },
     { name = "scikit-learn" },
 ]
 
@@ -497,7 +497,7 @@ requires-dist = [
     { name = "ipykernel", specifier = ">=7.4.0" },
     { name = "numpy", specifier = ">=2.5.5" },
     { name = "pandas", specifier = ">=2.3.3" },
-    { name = "pulp", specifier = ">=4.3.1" },
+    { name = "pulp", extras = ["cbc"], specifier = ">=4.3.1" },
     { name = "scikit-learn", specifier = ">=1.9.1" },
 ]
 
@@ -576,6 +576,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/33/ae/d33a8feba68fa810b30d70c660e4a2c62299472c2e1aa34406ccce306d13/catboost-1.2.10-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:39234b3692b6c9002b4a2ac529025fc210dd72feb9b621b27d17c65b7d3e9f92", size = 96704178, upload-time = "2026-02-18T16:12:11.229Z" },
     { url = "https://files.pythonhosted.org/packages/15/6c/08eabe522ac5cefc605ef81f273d77602130739ec7bcdc0ef192aa0a1f07/catboost-1.2.10-cp312-cp312-manylinux2014_x86_64.whl", hash = "sha256:b28f763776e62f50da90dddf73b36399583295032667a7e46fc5c1f2593eb80f", size = 97136498, upload-time = "2026-02-18T16:12:15.339Z" },
     { url = "https://files.pythonhosted.org/packages/93/e2/f467a133b37eef2b3d8697d46a6e7f0da24bd3643f5475817c473ffc41dc/catboost-1.2.10-cp312-cp312-win_amd64.whl", hash = "sha256:6b8a7ef11d7a89fc547760cfafeee895011a4b92cc1f60d00235ef80a71158ed", size = 100214655, upload-time = "2026-02-18T16:12:20.046Z" },
+]
+
+[[package]]
+name = "cbcbox"
+version = "2.929"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6a/9e/c41844f3a746500b88982817233f3f2f4fa6d3a554cedb9222bac9efcbea/cbcbox-2.929-py3-none-macosx_15_0_arm64.whl", hash = "sha256:610fd250f737b19f599d56cca299682a4519472b3ff6a13044502eb71e03931e", size = 59626733, upload-time = "2026-03-23T15:28:20.758Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/08/172af0d618ede8668862ae9c83ffcd929bc966610c1ce357b268edb33645/cbcbox-2.929-py3-none-macosx_15_0_x86_64.whl", hash = "sha256:b369071081176fd55ba9d104c2f2330133c36f0264ebe0215c50a366f290a050", size = 87883726, upload-time = "2026-03-23T15:28:24.874Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/c7/a57493dd959a57dcb8dc31aeef468c0e95d066d4bbf8fc59f9dda3a1fd97/cbcbox-2.929-py3-none-manylinux2014_aarch64.whl", hash = "sha256:62841ab4ed4e1c368bcba8d62c66cd7dd03f3dfaf1ecf4a01c6385a122d1946e", size = 145740150, upload-time = "2026-03-23T15:28:29.617Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/86/502b81d060603e1016a8cb471064e4e65d8009c2feed60ea878b8513a728/cbcbox-2.929-py3-none-manylinux2014_x86_64.whl", hash = "sha256:a57a403cc44fb2af0aa53cb790a7642390f1836a5ff6a7a0b31b30eb6597e3e0", size = 181208771, upload-time = "2026-03-23T15:28:35.544Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/85/2fef9c7c3054ebfb9b0e84fabbeac776a18514b025efa5abd768c889f560/cbcbox-2.929-py3-none-win_amd64.whl", hash = "sha256:0a91420befb965ec1763aab62d7908d3a89a51af845e2a4e05c09d99a67f1151", size = 135305901, upload-time = "2026-03-23T15:28:42.021Z" },
 ]
 
 [[package]]
@@ -2789,6 +2801,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/51/69/b2657dee3611f2614442e239da5e66e7ce4f529f51370877f421a24d0103/pulp-4.3.1-pp312-pypy312_pp80-musllinux_1_2_armv7l.whl", hash = "sha256:15e495da9c3404da9edcaeaaa7b2b81816c60deff1bf52ed2c0f13d3b9e0c724", size = 1065047, upload-time = "2026-11-19T11:09:50.382Z" },
     { url = "https://files.pythonhosted.org/packages/24/cb/6aee305daef0900c1d373082497b5e7ee43bffa87266e0aed6b60bc90b67/pulp-4.3.1-pp312-pypy312_pp80-musllinux_1_2_i686.whl", hash = "sha256:3797676ba25b3aa9b5419d78f573f5f973a856a545a0d2b4851d8e7a1f4e12a8", size = 1030738, upload-time = "2026-11-19T11:09:52.208Z" },
     { url = "https://files.pythonhosted.org/packages/04/0d/af60524327d16dd5676a4725a2e4c783305785e1a66fcc5c1299b9005f10/pulp-4.3.1-pp312-pypy312_pp80-musllinux_1_2_x86_64.whl", hash = "sha256:a444f03e5749a56001b133550f15672871b2f34ac182dcdafd7d4e2c48b2965b", size = 995968, upload-time = "2026-11-19T11:09:53.583Z" },
+]
+
+[package.optional-dependencies]
+cbc = [
+    { name = "cbcbox" },
 ]
 
 [[package]]

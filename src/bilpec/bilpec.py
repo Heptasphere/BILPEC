@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from tkinter import Label
 from typing import TYPE_CHECKING, override
 
 import numpy as np
@@ -13,134 +11,19 @@ import pulp
 from autogluon.core.metrics import log_loss
 from numpy._typing._array_like import NDArray
 
+from bilpec._base import AbstractEnsemble
+from bilpec.constraint import (
+    Constraint,
+    LabelConstraint,
+    MeasureConstraint,
+    SampleSetConstraint,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from autogluon.core.metrics import Scorer
     from numpy.typing import NDArray
-
-
-class AbstractEnsemble(ABC):
-    """Abstract Class for Ensemble Methods."""
-
-    def __init__(
-        self,
-        ensemble_size: int,
-        problem_type: str,
-        metric: Scorer,
-    ) -> None:
-        """Base arguments needed for an ensemble method to function.
-
-        Args:
-            ensemble_size (int): Number of base learner in ensemble.
-            problem_type (str): Type of problem, among binary, multiclass and regression.
-            metric (Scorer): _description_
-        """
-        self.ensemble_size: int = ensemble_size
-        # Used by tab_arena, not the type of the actual task.
-        self.problem_type: str = problem_type
-        self.metric: Scorer = metric
-        self.weights_: NDArray[float] | None = None
-        # Used by our custom ensemble methods, the type of the actual task.
-        match self.metric.name:
-            case "roc_auc":
-                self.actual_problem_type = "binary"
-            case "log_loss":
-                self.actual_problem_type = "multiclass"
-            case _:
-                raise NotImplementedError(
-                    f"We haven't implemented ensemble methods for the metric {self.metric.name}."
-                )
-
-    @abstractmethod
-    def fit(self, predictions: NDArray[float], labels: NDArray) -> None:
-        """Train the ensemble model.
-
-        Args:
-            predictions (NDArray): Predicted class probabilities.
-                                    Shape (n_models, n_samples, n_classes) for multiclass.
-                                    Shape (n_models, n_samples) for binary. Considers the prediction of class 1.
-            labels (NDArray): True labels. Shape (n_samples,)
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def predict_proba(self, predictions: NDArray[float]) -> NDArray[float]:
-        """Predict class probabilities using the ensemble model.
-
-        Args:
-            predictions (NDArray):  Predicted class probabilities
-                                    Shape (n_models, n_samples, n_classes) for multiclass.
-                                    Shape (n_models, n_samples) for binary. Considers the prediction of class 1.
-
-        Returns:
-            NDArray: Predicted class probabilities.
-                    Shape (n_models, n_samples, n_classes) for multiclass.
-                    Shape (n_models, n_samples) for binary. Gives the prediction of class 1.
-        """
-        raise NotImplementedError
-
-    def predict(self, predictions: NDArray[int]) -> NDArray[int]:
-        """Predict a class. Not used by our metrics.
-
-        Args:
-            predictions (NDArray): Array of predicted class probabilities
-                                    of shape (n_models, n_samples, n_classes) or (n_models, n_samples).
-
-        Returns:
-            NDArray: Predicted classes. Shape (n_samples,).
-        """
-        raise NotImplementedError(
-            f"predict method not implemented for {type(self).__class__}."
-        )
-
-
-@dataclass(kw_only=True)
-class Constraint(ABC):
-    # Sort of threshold, possibilities depend on constraint type
-    threshold_type: str
-    # Threshold that needs to be cleared
-    threshold: float | int
-    # Whether the constraint is to be above or below the threshold.
-    below_threshold: bool = False
-    # Whether it should be possible to relax the constraint
-    relaxation: bool = False
-    # Penalty to apply through relaxation. A type of a float.
-    penalty: str | float = 0.0
-
-
-@dataclass(kw_only=True)
-class MeasureConstraint(Constraint):
-    # Name of the measure
-    measure_name: str
-    # The actual measures per model
-    measures: NDArray
-    # Whether the bound is a total, a mean or otherwise
-    threshold_type: str = "total"
-    # Threshold types:
-    # 'total'
-    # 'mean'
-
-
-@dataclass(kw_only=True)
-class LabelConstraint(Constraint):
-    # ID of the label
-    label_id: int
-    # Maximum number of samples used for constraint.
-    # All of them by default.
-    sample_size: int = 10**15
-    # Threshold types:
-    # 'error_rate'
-    # 'mean_probability'
-
-
-@dataclass(kw_only=True)
-class SampleSetConstraint(Constraint):
-    # Method saying whether a sample is counted or not
-    parser: Callable[NDArray, bool]
-    # Threshold types:
-    # 'accuracy'
-    # 'mean_probability'
 
 
 class AbstractBILPEC(AbstractEnsemble, ABC):
@@ -183,6 +66,7 @@ class AbstractBILPEC(AbstractEnsemble, ABC):
         self.sample_constraints: list[SampleSetConstraint] = []
 
         self._parse_constraints(constraints)
+        self.problem_stats: pulp.LpSolveStats | None = None
 
     def _parse_constraints(self, constraints) -> None:
         if constraints is None:
@@ -231,13 +115,13 @@ class AbstractBILPEC(AbstractEnsemble, ABC):
         match self.solver:
             case "SCIP":
                 return pulp.SCIP_PY(**solver_kwargs)
-            case "COIN":
+            case "CBC":
                 return pulp.COIN_CMD(**solver_kwargs)
             case "GUROBI":
                 # GUROBI requires installation and a license
                 return pulp.GUROBI(**solver_kwargs)
         raise ValueError(
-            f"The available solvers are SCIP, COIN and GUROBI, not {self.solver}"
+            f"The available solvers are SCIP, CBC and GUROBI, not {self.solver}"
         )
 
     @override
@@ -263,26 +147,20 @@ class AbstractBILPEC(AbstractEnsemble, ABC):
 
         solver = self._get_solver(solver_kwargs=solver_kwargs)
 
-        stats: pulp.LpSolveStats = problem.solve(solver=solver)
+        self.problem_stats = problem.solve(solver=solver)
 
         self.weights_ = np.array([var.value() for _, var in weight_vars.items()])
 
         # Fallback: in case of failure, use all base learners.
-        if not stats.has_solution or np.sum(np.abs(self.weights_)) == 0:
+        if not self.problem_stats.has_solution or np.sum(np.abs(self.weights_)) == 0:
             warnings.warn(
-                f"No solutions were found that respected all constraints for problem with sample_size: {len(labels)}"
+                f"No solutions were found that respected all constraints for problem with sample_size: {len(labels)}. Defaulting to Soft Voting."
             )
             self.weights_ = np.ones(self.ensemble_size)
-
-        if stats.status != pulp.LpSolveStatus.Optimal:
-            warnings.warn(
-                f"Not the optimal function for problem with sample_size: {len(labels)}:\n{stats!s}"
-            )
 
         # We delete the problem after getting its result.
         del problem
         del solver
-        # gc.collect()
 
     def _get_filtered_sample_indices(
         self,
@@ -552,6 +430,33 @@ class AbstractBILPEC(AbstractEnsemble, ABC):
         preds_ensemble = np.average(pred_probas, axis=0, weights=weights)
         return preds_ensemble
 
+    def is_feasible(self) -> bool:
+        """Check if problem is feasible after fitting to the problem.
+
+        Returns
+        -------
+        bool
+            True if feasible. False if infeasible.
+
+        Raises
+        ------
+        RuntimeError
+            Called if fit isn't called before this.
+        ValueError
+            Called if no solution was found, but in part due to limits defined by user.
+        """
+        if self.problem_stats is None:
+            raise RuntimeError("fit should be called before is_feasible.")
+
+        if self.problem_stats.status == pulp.LpSolveStatus.Infeasible:
+            return False
+        elif self.problem_stats.has_solution:
+            return True
+        else:
+            raise ValueError(
+                f"No solution was found but it may be due to bad parameters.\nStats: {self.problem_stats!s}"
+            )
+
 
 class BILPEC(AbstractBILPEC):
     def __init__(
@@ -560,7 +465,7 @@ class BILPEC(AbstractBILPEC):
         problem_type: str,
         metric: Scorer = log_loss,
         fixed_ensemble_size: int = 20,
-        solver: str = "SCIP",
+        solver: str = "CBC",
         solver_time_limit: float = 20,
         solver_relative_gap: float = 0.0,
         subset_choice: str = "random",
@@ -766,7 +671,7 @@ class BILPEC(AbstractBILPEC):
             )
 
 
-class BILPECR(BILPEC):
+class BILPECStar(BILPEC):
     """Recursive BILPEC that reduces S every time it fails conditions until S = 1."""
 
     @override
@@ -792,32 +697,37 @@ class BILPECR(BILPEC):
 
         solver = self._get_solver(solver_kwargs=solver_kwargs)
 
-        stats: pulp.LpSolveStats = problem.solve(solver=solver)
+        self.problem_stats = problem.solve(solver=solver)
 
         found_weights = np.array([var.value() for _, var in weight_vars.items()])
 
-        no_solution: bool = (not stats.has_solution) or np.sum(
+        # Fallback: in case of failure, use all base learners.
+        if not self.problem_stats.has_solution or np.sum(np.abs(self.weights_)) == 0:
+            warnings.warn(
+                f"No solutions were found that respected all constraints for problem with sample_size: {len(labels)}. Defaulting to Soft Voting."
+            )
+            self.weights_ = np.ones(self.ensemble_size)
+
+        if self.problem_stats.status != pulp.LpSolveStatus.Optimal:
+            warnings.warn(
+                f"Not the optimal function for problem with sample_size: {len(labels)}:\n{self.problem_stats!s}"
+            )
+
+        no_solution: bool = (not self.problem_stats.has_solution) or np.sum(
             np.abs(found_weights)
         ) == 0
-
-        if stats.status != pulp.LpSolveStatus.Optimal:
-            warnings.warn(
-                f"Not the optimal function for problem with sample_size: {len(labels)}:\n{stats!s}"
-            )
-        else:
-            warnings.warn(f"Optimal solution found.\n{stats!s}")
 
         if no_solution:
             if self.fixed_ensemble_size == 1:
                 warnings.warn(
-                    "No single base learner respects the constraints. Failing.\nCurrent status: {stats!s}"
+                    "No single base learner respects the constraints. Failing.\nCurrent status: {self.problem_stats!s}"
                 )
                 self.weights_ = np.ones(self.ensemble_size)
                 return
 
             # Fallback: in case of failure, use all base learners.
             warnings.warn(
-                f"No solutions were found that respected all constraints for problem with fixed ensemble size: {self.fixed_ensemble_size}.\nCurrent status: {stats!s}\nTrying with {self.fixed_ensemble_size - 1}."
+                f"No solutions were found that respected all constraints for problem with fixed ensemble size: {self.fixed_ensemble_size}.\nCurrent status: {self.problem_stats!s}\nTrying with {self.fixed_ensemble_size - 1}."
             )
             self.fixed_ensemble_size -= 1
             self._update_size_constraints()

@@ -1,8 +1,7 @@
 # BILPEC
 
-Github for the code in the article "Constrained Ensemble Pruning via Binary Integer Linear Programming".
+Git for the code in the article "Constrained Ensemble Pruning via Binary Integer Linear Programming".
 
-Note that you need to install a MIP solver such as Gurobi or SCIP to use this package, as pulp doesn't come with one anymore.
+This contains the BILPEC/BILPEC\* implementation and baselines implementations.
 
-To use Gurobi 13, as was done in the article experiments, requires installing it separately and choosing it as the solver.
-More information at: https://www.gurobi.com/product/licensing
+By default, only the [CBC](https://github.com/coin-or/Cbc) solver is installed. To use Gurobi 13, the solver used for article experiments, you need to install the [Gurobi solver](https://www.gurobi.com/product/download-center) and its python package, `gurobipy`, separately.
